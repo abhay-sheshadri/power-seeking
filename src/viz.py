@@ -204,6 +204,7 @@ def _plot_single_row(
     split_label_offset: float,
     rotate_xticks: Optional[float],
     show_values: bool,
+    show_error_bars: bool,
     ylabel: str,
     ylim: Optional[Tuple[float, float]],
     show_legend: bool,
@@ -259,17 +260,21 @@ def _plot_single_row(
                 err_lo.append(mean - ci_lo)
                 err_hi.append(ci_hi - mean)
 
+        bar_kwargs = dict(
+            label=category if show_legend else None,
+            color=colors[cat_idx % len(colors)],
+            alpha=0.85,
+            zorder=3,
+        )
+        if show_error_bars:
+            bar_kwargs.update(yerr=[err_lo, err_hi], capsize=4,
+                              error_kw={"linewidth": 1.5, "capthick": 1.5})
+
         bars = ax.bar(
             x_positions + offset,
             means,
             bar_width,
-            label=category if show_legend else None,
-            color=colors[cat_idx % len(colors)],
-            yerr=[err_lo, err_hi],
-            capsize=4,
-            error_kw={"linewidth": 1.5, "capthick": 1.5},
-            alpha=0.85,
-            zorder=3,
+            **bar_kwargs,
         )
 
         if show_values:
@@ -315,7 +320,7 @@ def _plot_single_row(
     else:
         ax.set_xticklabels(x_labels)
 
-    if show_legend and legend_loc != "outside right":
+    if show_legend and legend_loc not in ("outside right", "below"):
         ax.legend(loc=legend_loc, frameon=True)
     _style_ax(ax, ylim=ylim)
 
@@ -344,6 +349,7 @@ def plot_hierarchical_bars(
     row_ylabel: Optional[str] = None,
     hlines: Optional[List[Dict]] = None,
     keep_first_legend: bool = False,
+    show_error_bars: bool = True,
 ):
     """
     Create a grouped bar chart with error bars.
@@ -365,6 +371,7 @@ def plot_hierarchical_bars(
         group_order: Explicit order for groups (x-axis)
         rotate_xticks: Optional rotation angle for x-axis labels
         show_values: Whether to show value labels on bars
+        show_error_bars: Whether to show error bars (default True)
         split_spacing: Spacing between splits
         split_label_offset: Vertical offset for split labels
         splits_per_row: If set, splits data across multiple rows with this many splits per row
@@ -446,6 +453,7 @@ def plot_hierarchical_bars(
             split_label_offset=split_label_offset,
             rotate_xticks=rotate_xticks,
             show_values=show_values,
+            show_error_bars=show_error_bars,
             ylabel=ylabel,
             ylim=ylim,
             show_legend=(row_idx == 0),  # Only show legend on first row
@@ -459,11 +467,11 @@ def plot_hierarchical_bars(
 
     # Add title to figure
     if title:
-        fig.suptitle(title, fontsize=14, color=ANTHRO_CLAY, y=1.02)
+        fig.suptitle(title, fontsize=14, fontweight="bold")
 
     plt.tight_layout()
 
-    # Place legend outside the plot on the right
+    # Place legend outside the plot
     if legend_loc == "outside right":
         handles, labels = axes[0, 0].get_legend_handles_labels()
         if handles:
@@ -473,6 +481,18 @@ def plot_hierarchical_bars(
                 loc="center left",
                 bbox_to_anchor=(1.0, 0.5),
                 frameon=True,
+            )
+    elif legend_loc == "below":
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        if handles:
+            fig.legend(
+                handles,
+                labels,
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.02),
+                ncol=min(len(handles), 6),
+                frameon=True,
+                fontsize=10,
             )
 
     # Apply horizontal reference lines
@@ -502,6 +522,80 @@ def plot_hierarchical_bars(
 
     _save_fig(fig, save_path)
 
+    return fig
+
+
+# =============================================================================
+# Labeled scatter plot (e.g. Pareto frontiers)
+# =============================================================================
+
+
+def plot_labeled_scatter(
+    points: List[Dict],
+    xlabel: str = "",
+    ylabel: str = "",
+    title: str = "",
+    hlines: Optional[List[Dict]] = None,
+    vlines: Optional[List[Dict]] = None,
+    figsize: Tuple[float, float] = (10, 7),
+    save_path: Optional[str] = None,
+) -> plt.Figure:
+    """Scatter plot with labeled points, useful for Pareto-style charts.
+
+    Args:
+        points: List of dicts, each with keys:
+            - "x", "y": coordinates
+            - "label": text annotation
+            - "color": point color (default ANTHRO_BLUE_500)
+            - "marker": matplotlib marker (default "o")
+        hlines: Horizontal reference lines [{y, color, linestyle, alpha, label}, ...]
+        vlines: Vertical reference lines [{x, color, linestyle, alpha, label}, ...]
+    """
+    fig, ax = plt.subplots(figsize=figsize, dpi=150)
+    fig.patch.set_facecolor("white")
+
+    for pt in points:
+        ax.scatter(
+            pt["x"], pt["y"],
+            c=[pt.get("color", ANTHRO_BLUE_500)],
+            marker=pt.get("marker", "o"),
+            s=200, zorder=5,
+            edgecolors=ANTHRO_SLATE, linewidth=0.5,
+        )
+        ax.annotate(
+            pt["label"], (pt["x"], pt["y"]),
+            textcoords="offset points", xytext=(10, 5), fontsize=8,
+        )
+
+    for hl in (hlines or []):
+        ax.axhline(
+            y=hl["y"],
+            color=hl.get("color", ANTHRO_GRAY_400),
+            linestyle=hl.get("linestyle", "--"),
+            linewidth=hl.get("linewidth", 1.5),
+            alpha=hl.get("alpha", 0.5),
+            label=hl.get("label"),
+            zorder=2,
+        )
+    for vl in (vlines or []):
+        ax.axvline(
+            x=vl["x"],
+            color=vl.get("color", ANTHRO_GRAY_400),
+            linestyle=vl.get("linestyle", "--"),
+            linewidth=vl.get("linewidth", 1.5),
+            alpha=vl.get("alpha", 0.5),
+            label=vl.get("label"),
+            zorder=2,
+        )
+
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    if title:
+        fig.suptitle(title, fontsize=14, fontweight="bold")
+    ax.legend(fontsize=9, frameon=True)
+    _style_ax(ax)
+    plt.tight_layout()
+    _save_fig(fig, save_path)
     return fig
 
 
@@ -607,8 +701,8 @@ def plot_scatter_with_trend(
     full_title = title or "Scatter"
     ax.set_title(
         f"{full_title}\nSpearman {chr(961)}={rho:.3f} (p={rho_p:.3f})",
-        fontsize=11,
-        color=ANTHRO_CLAY,
+        fontsize=12,
+        fontweight="bold",
     )
     ax.legend(fontsize=8, frameon=True, loc="upper right")
     _style_ax(ax)
@@ -704,7 +798,7 @@ def plot_binned_bars(
     ax.set_xlabel(xlabel, fontsize=11)
     ax.set_ylabel(ylabel, fontsize=11)
     if title:
-        ax.set_title(title, fontsize=11, color=ANTHRO_CLAY)
+        ax.set_title(title, fontsize=12, fontweight="bold")
     _style_ax(ax)
 
     if own_fig:
@@ -803,7 +897,7 @@ def plot_line_series(
                 zorder=3,
             )
 
-        ax.set_title(panel.get("title", ""), fontsize=13, fontweight="bold")
+        ax.set_title(panel.get("title", ""), fontsize=12, fontweight="bold")
         ax.set_xlabel(panel.get("xlabel", ""), fontsize=11)
         ax.set_ylabel(panel.get("ylabel", ""), fontsize=11)
         if ylim is not None:
@@ -818,7 +912,7 @@ def plot_line_series(
     axes[0, 0].legend(loc=legend_loc, frameon=True, fontsize=10)
 
     if title:
-        fig.suptitle(title, fontsize=15, color=ANTHRO_CLAY, y=1.01)
+        fig.suptitle(title, fontsize=14, fontweight="bold")
 
     plt.tight_layout()
     _save_fig(fig, save_path)
@@ -899,7 +993,7 @@ def plot_confusion_heatmaps(
         ax.set_yticklabels(labels, fontsize=7)
         ax.set_xlabel("Predicted", fontsize=9)
         ax.set_ylabel("True", fontsize=9)
-        ax.set_title(panel["title"], fontsize=10, fontweight="bold", pad=8)
+        ax.set_title(panel["title"], fontsize=12, fontweight="bold", pad=8)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
@@ -912,7 +1006,7 @@ def plot_confusion_heatmaps(
         ax0 = axes_flat[0]
         bbox = ax0.get_position()
         title_x = (bbox.x0 + bbox.x1) / 2
-        fig.suptitle(title, fontsize=14, color=ANTHRO_CLAY, x=title_x, ha="center")
+        fig.suptitle(title, fontsize=14, fontweight="bold", x=title_x, ha="center")
 
     _save_fig(fig, save_path)
 
@@ -1035,7 +1129,7 @@ def plot_scaling_curves(
                     zorder=3,
                 )
 
-        ax.set_title(panel.get("title", ""), fontsize=13, fontweight="bold")
+        ax.set_title(panel.get("title", ""), fontsize=12, fontweight="bold")
         ax.set_xlabel(panel.get("xlabel", "N (samples)"), fontsize=11)
         ax.set_ylabel(panel["ylabel"], fontsize=11)
         if log_x:
@@ -1064,7 +1158,7 @@ def plot_scaling_curves(
         axes[0, 0].legend(loc=legend_loc, frameon=True, fontsize=10)
 
     if title:
-        fig.suptitle(title, fontsize=15, color=ANTHRO_CLAY, y=1.01)
+        fig.suptitle(title, fontsize=14, fontweight="bold")
 
     plt.tight_layout()
     _save_fig(fig, save_path)

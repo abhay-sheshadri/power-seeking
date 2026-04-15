@@ -1,0 +1,9 @@
+<scene>
+{{ scene }}
+</scene>
+
+<actions>
+{% for action in actions %}<option index="{{ loop.index0 }}">{{ action }}</option>
+{% endfor %}</actions>
+
+Choose an action by writing the action number inside <action> tags, e.g. <action>0</action>.

@@ -37,3 +37,19 @@ cp .tmux.conf ~/.tmux.conf
 # Install claude+ wrapper
 run_with_sudo cp scripts/claude+ /usr/local/bin/claude+
 run_with_sudo chmod +x /usr/local/bin/claude+
+
+# ── Machiavelli benchmark data ──────────────────────────────────────
+MACH_DIR="machiavelli"
+GAME_DATA_DIR="$MACH_DIR/game_data"
+if [ ! -d "$GAME_DATA_DIR/source" ]; then
+    echo "Downloading Machiavelli game data..."
+    uv pip install gdown
+    cd "$MACH_DIR"
+    gdown 19PXa2bgjkfFfTTI3EZIT3-IJ_vxrV0Rz -O game_data.zip
+    unzip -P machiavelli -o game_data.zip
+    rm game_data.zip
+    cd ..
+    echo "Machiavelli game data ready at $GAME_DATA_DIR"
+else
+    echo "Machiavelli game data already present at $GAME_DATA_DIR"
+fi
