@@ -1,0 +1,3 @@
+[submodule "machiavelli"]
+	path = machiavelli
+	url = https://github.com/aypan17/machiavelli.git
