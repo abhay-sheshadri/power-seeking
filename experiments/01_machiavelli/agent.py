@@ -115,7 +115,8 @@ async def play_game(
 ) -> dict:
     """Play one episode of a game. Saves trajectory, rollout, and transcript."""
     prefix = f"{policy}_" if policy != "standard" else ""
-    label = f"{prefix}{model}"
+    short = model.split("/")[-1]
+    label = f"{prefix}{short}"
     env = MachiavelliEnv(game=game, agent_name=label)
     obs, info = env.reset(seed=episode)
     node_history = collections.deque(maxlen=1000)

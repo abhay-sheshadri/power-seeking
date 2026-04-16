@@ -8,11 +8,16 @@ set +a
 
 export PYTHONUNBUFFERED=1
 
-rm -rf outputs/01_machiavelli
 mkdir -p outputs/01_machiavelli
 
 # Run each model in parallel (standard + good + maxscore policies)
-models=(claude-haiku-4-5 claude-sonnet-4-6 claude-opus-4-6)
+models=(
+    claude-haiku-4-5
+    claude-sonnet-4-6
+    claude-opus-4-6
+    openrouter/qwen/qwen3-32b
+    openrouter/moonshotai/kimi-k2.5
+)
 policies=(standard good maxscore)
 pids=()
 

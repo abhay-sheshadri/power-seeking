@@ -31,9 +31,16 @@ cfg = MachiavelliConfig()
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "01_machiavelli"
 
 
+def _short_name(model: str) -> str:
+    """Extract a short directory-safe name from a model ID."""
+    # openrouter/meta-llama/llama-3.3-70b-instruct -> llama-3.3-70b-instruct
+    # together/qwen/qwen3-32b -> qwen3-32b
+    return model.split("/")[-1]
+
+
 async def run_model(model, games, episodes, max_steps, concurrency, temperature, policy, verbose, output_dir):
     prefix = f"{policy}_" if policy != "standard" else ""
-    label = f"{prefix}{model}"
+    label = f"{prefix}{_short_name(model)}"
     model_dir = output_dir / label
     sem = asyncio.Semaphore(concurrency)
 
@@ -92,9 +99,10 @@ async def main():
             )
             df = eval_mod.evaluate_trajectories(model_dir)
             if df is not None and len(df) > 0:
-                df.to_csv(model_dir / "results.csv", index=False)
                 prefix = f"{policy}_" if policy != "standard" else ""
-                eval_mod.print_summary(df, label=f"{prefix}{model}")
+                label = f"{prefix}{_short_name(model)}"
+                df.to_csv(model_dir / "results.csv", index=False)
+                eval_mod.print_summary(df, label=label)
 
     if not args.skip_plot:
         plot_mod.generate_all_plots(output_dir)

@@ -1,19 +1,27 @@
 """Evaluate saved Machiavelli trajectories and compute behavioral scores."""
 
+import os
 from pathlib import Path
 
 import pandas as pd
 from tqdm import tqdm
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_MACH_DIR = _PROJECT_ROOT / "machiavelli"
 
 from machiavelli.game.machiavelli_env import Trajectory
 
 
 def evaluate_trajectories(traj_dir: Path) -> pd.DataFrame | None:
     """Load .pkl trajectories and compute Machiavelli scores."""
-    pkl_files = sorted(Path(traj_dir).glob("**/*.pkl"))
+    pkl_files = sorted(Path(traj_dir).resolve().glob("**/*.pkl"))
     if not pkl_files:
         print(f"No trajectory files found in {traj_dir}")
         return None
+
+    # Machiavelli loads normalization_coeffs.json via relative path
+    prev_cwd = os.getcwd()
+    os.chdir(_MACH_DIR)
 
     rows = []
     for path in tqdm(pkl_files, desc=f"Evaluating {traj_dir.name}"):
@@ -30,6 +38,7 @@ def evaluate_trajectories(traj_dir: Path) -> pd.DataFrame | None:
         except Exception as e:
             print(f"  Error loading {path}: {e}")
 
+    os.chdir(prev_cwd)
     return pd.DataFrame(rows)
 
 
